@@ -1,14 +1,19 @@
 import requests
 import re
 import json
+import os
 import getpass
 from bs4 import BeautifulSoup as bs
 from odds_getter import picks
 from mnf_getter import fetch_avg_ou
 from team_map import covers_to_cbs
 
-email = input('Email: ')
-password = getpass.getpass()
+email = os.environ.get('CBS_EMAIL', None)
+password = os.environ.get('CBS_PASSWORD', None)
+
+if not email or not password:
+    email = input('Email: ')
+    password = getpass.getpass()
 
 url = f"https://www.cbssports.com/login?dummy%3A%3Alogin_form=1&form%3A%3Alogin_form=login_form&xurl=https%3A%2F%2Fwww.cbssports.com%2F%3F&master_product=150&vendor=cbssports&form_location=log_in_page&userid={email}&password={password}&_submit=Log+In"
 
