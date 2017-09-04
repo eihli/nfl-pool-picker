@@ -4,10 +4,10 @@ import json
 import getpass
 from bs4 import BeautifulSoup as bs
 from odds_getter import picks
+from mnf_getter import fetch_avg_ou
 from team_map import covers_to_cbs
 
-
-email = getpass.getuser()
+email = input('Email: ')
 password = getpass.getpass()
 
 url = f"https://www.cbssports.com/login?dummy%3A%3Alogin_form=1&form%3A%3Alogin_form=login_form&xurl=https%3A%2F%2Fwww.cbssports.com%2F%3F&master_product=150&vendor=cbssports&form_location=log_in_page&userid={email}&password={password}&_submit=Log+In"
@@ -36,7 +36,6 @@ with requests.Session() as s:
             game = _game.find('input', {'data': re.compile(cbs_pick)})
             if game:
                 game_id = game.attrs['data']
-                break
 
         _pick = {
             'game_id': game_id,
@@ -57,8 +56,8 @@ with requests.Session() as s:
         "picks": cbs_picks,
         "period": week,
         "team_id": team_id,
-        "appsrc": "d",
-        "mnf": "43",
+        "appsrc": APPSRC,  # Don't know what this is for
+        "mnf": fetch_avg_ou(),
     }
 
     data = {

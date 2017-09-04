@@ -1,6 +1,6 @@
 covers_to_cbs = {
     'Pittsburgh': 'PIT',
-    'Kansas City': 'KC
+    'Kansas City': 'KC',
     'Atlanta': 'ATL',
     'N.Y. Jets': 'NYJ',
     'Carolina': 'CAR',
