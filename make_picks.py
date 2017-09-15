@@ -1,12 +1,31 @@
 import requests
 import re
+import sys
 import json
 import os
 import getpass
+import logging
+
 from bs4 import BeautifulSoup as bs
-from odds_getter import picks
+from odds_getter import get_picks
 from mnf_getter import fetch_avg_ou
 from team_map import covers_to_cbs
+
+format = '{asctime}: {message}'
+formatter = logging.Formatter(fmt=format, style='{')
+
+stream_handler = logging.StreamHandler(stream=sys.stdout)
+stream_handler.setLevel(logging.INFO)
+stream_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler('nflog.log')
+file_handler.setLevel(logging.ERROR)
+file_handler.setFormatter(formatter)
+
+logger = logging.getLogger(__name__)
+logger.addHandler(stream_handler)
+logger.addHandler(file_handler)
+logger.setLevel(logging.INFO)
 
 email = os.environ.get('CBS_EMAIL', None)
 password = os.environ.get('CBS_PASSWORD', None)
@@ -22,16 +41,26 @@ make_picks_url = "http://fhpool2015.football.cbssports.com/api/league/opm/pick-l
 TEAM_ID = 56
 APPSRC = 'd'
 
-
 with requests.Session() as s:
-    print("POST: https://www.ibm.com/watson/developer/api?dev_id=1337&week=1&analyze=deep-neural-conv-net")
-    print("Waiting for response...")
-    s.post(url)
-    print("Processing results in DeepMind.NFL.analyze(week=1, rounds=1000, optimality=True)")
-    html = s.get(picks_url).content
+    r = s.post(url)
+    if r.status_code != 200:
+        logger.error("Error logging in to cbs sports: {r.content}")
+        sys.exit(1)
+
+    r = s.get(picks_url)
+    if r.status_code != 200:
+        logger.error("Error getting picks url for cbs sports: {r.content}")
+        sys.exit(1)
+
+    html = r.content
     soup = bs(html, 'html.parser')
     away_selections = soup.find_all(class_='awayTeamSelection')
+    if len(away_selections) < 16:
+        logger.error("Unable to find 16 away teams: {soup}")
+        sys.exit(1)
+
     cbs_picks = []
+    picks = get_picks()
     for i, pick in enumerate(picks):
         cbs_pick = covers_to_cbs[pick[0]]
         games = soup.find_all(
@@ -48,14 +77,16 @@ with requests.Session() as s:
             'weight': f'{16 - i}'
         }
         cbs_picks.append(_pick)
-        if i < 5:
-            print(f"Picking {json.dumps(_pick)}")
-        elif i == 5:
-            print("...")
+    logger.info(f"Picking: {cbs_picks}")
 
     week = soup.find('input', id='week').attrs['value']
     team_id = soup.find('input', id='team_id').attrs['value']
     token = re.search('CBSi.token = "(.*)"', soup.text).group(1)
+
+    if not week or not team_id or not token:
+        logger.error(
+            "Error - week: {week}, team_id: {team_id}, token: {token}"
+        )
 
     payload = {
         "picks": cbs_picks,
@@ -71,5 +102,10 @@ with requests.Session() as s:
         "resultFormat": "json",
         "responseFormat": "json",
     }
+    logger.info(f'Posting with: {data}')
 
     response = s.post(make_picks_url, data=data)
+    if response.status_code != 200:
+        msg = f"Error posting picks: \n{response.content}\n{str(data)}"
+        logger.critical(msg)
+        sys.exit(1)
