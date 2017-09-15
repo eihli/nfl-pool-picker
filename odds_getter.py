@@ -60,7 +60,7 @@ def get_picks():
         [[name, odds] for name, odds in summary.items()],
         key=lambda x: abs(x[1]), reverse=True)
 
-    if len(picks) != 15:
+    if len(picks) != 16:
         logger.error(f"Expected 16 picks but only got {len(picks)}")
         logger.error(str(picks))
         sys.exit(1)
